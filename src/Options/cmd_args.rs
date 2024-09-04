@@ -3,6 +3,7 @@
 */
 use std::str::FromStr;
 
+use clap::ArgAction;
 use clap::{Arg, ArgMatches, Command};
 
 use crate::Options::constants::*;
@@ -27,7 +28,7 @@ pub fn get_args_matches() -> ArgMatches {
         .version(VERSION_STR)
         .author(AUTHOR)
         .args([
-            Arg::new("path")
+            Arg::new("path or file")
                 .help("The path to the file to search in")
                 .short('p')
                 .default_value("."),
@@ -35,14 +36,22 @@ pub fn get_args_matches() -> ArgMatches {
                 .help("The key to search for in the file")
                 .short('k')
                 .required(true),
-            Arg::new("lang")
+            Arg::new("language")
                 .help("The language of the file")
                 .short('l')
+                .long("lang")
                 .default_value("any"),
             Arg::new("symbol")
                 .help("The symbol to search for in the file")
                 .short('s')
                 .default_value("true"),
+            // TODO: Add the ignore directory. This should be a list of directories to ignore.
+            Arg::new("ignore")
+                .num_args(1..=10)
+                .help("The directory to ignore")
+                .long("ignore")
+                .short('i')
+                .action(ArgAction::Set),
         ])
         .styles(CLI_STYLES.to_owned())
         .get_matches()
@@ -62,6 +71,7 @@ pub struct CommandArgs<'a> {
     pub key_to_search: &'a str,
     pub lang: Lang,
     pub is_symbol: bool,
+    pub ignore: Vec<&'a str>,
 }
 
 impl<'a> CommandArgs<'a> {
@@ -88,15 +98,21 @@ impl<'a> CommandArgs<'a> {
 
     */
     pub fn from_matches(matches: &'a ArgMatches) -> CommandArgs<'a> {
-        let path = matches.get_one::<String>("path").unwrap();
+        let path = matches.get_one::<String>("path or file").unwrap();
         let key_to_search = matches.get_one::<String>("key_to_search").unwrap();
         let is_symbol = matches.get_one::<String>("symbol").unwrap();
+        let ignore = matches
+            .get_many::<String>("ignore")
+            .unwrap_or_default()
+            .map(|v| v.as_str())
+            .collect();
 
         CommandArgs {
             path,
             key_to_search,
-            lang: Lang::from_str(matches.get_one::<String>("lang").unwrap()).unwrap(),
+            lang: Lang::from_str(matches.get_one::<String>("language").unwrap()).unwrap(),
             is_symbol: is_symbol == "true",
+            ignore,
         }
     }
 }

@@ -8,6 +8,8 @@
 pub mod cmd_args;
 pub mod constants;
 
+use std::{path::Path, str::pattern::Pattern};
+
 use tree_sitter::Language;
 use tree_sitter_cpp;
 use tree_sitter_python;
@@ -106,5 +108,57 @@ pub fn get_query(lang: &Lang) -> Vec<&'static str> {
         Lang::Python => constants::PYTHON_MATCHES_QUERY.to_vec(),
         Lang::Rust => constants::RUST_MATCHES_QUERY.to_vec(),
         _ => vec![],
+    }
+}
+
+/// Check if any dir or file should be ignored.
+#[derive(Debug, Default)]
+pub struct IgnoreDir {
+    dir_and_files: Vec<String>,
+}
+
+impl IgnoreDir {
+    pub fn new() -> Self {
+        IgnoreDir {
+            dir_and_files: vec![],
+        }
+    }
+
+    /// Set the dir or file to ignore.
+    pub fn set_ignores(&mut self, dir_and_files: Vec<String>) {
+        self.dir_and_files = dir_and_files;
+    }
+
+    /// Fix the relative dir or file. to add the `./` at the start.
+    pub fn relative_dir_fix(&mut self) {
+        self.dir_and_files.iter_mut().for_each(|v| {
+            if Path::new(v).is_relative() && !v.starts_with("./") {
+                v.insert_str(0, "./");
+            }
+        });
+    }
+
+    /// Check if the dir should be ignored.
+    pub fn is_ignore(&self, dir: &str) -> bool {
+        self.dir_and_files.contains(&dir.to_string())
+    }
+
+    /// Exclude the git dir.
+    pub fn exclude_git(&mut self) {
+        self.dir_and_files
+            .iter_mut()
+            .filter(|v| "git".is_contained_in(v))
+            .for_each(|v| {
+                v.pop();
+            });
+    }
+
+    /// Ignore the git dir.
+    pub fn ignore_git(&mut self) {
+        self.dir_and_files.extend(
+            [".git", ".gitignore", ".gitattributes"]
+                .iter()
+                .map(|v| v.to_string()),
+        );
     }
 }
